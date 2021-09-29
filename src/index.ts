@@ -25,18 +25,26 @@ class Veebump extends Command {
       char: 'f',
       multiple: true,
     }),
-
-    bump: flags.enum<ReleaseType>({
-      char: 'b',
-      options: ['minor', 'major', 'patch'],
-      default: 'minor',
-    }),
   }
 
-  static args = []
+  static args = [
+    {
+      name: 'type',
+      options: [
+        'major',
+        'premajor',
+        'minor',
+        'preminor',
+        'patch',
+        'prepatch',
+        'prerelease',
+      ],
+      default: 'minor',
+    },
+  ]
 
   async run() {
-    const {flags} = this.parse(Veebump)
+    const {flags, args} = this.parse(Veebump)
 
     const processMap: ProcessBind = {
       package: this.replacePackage,
@@ -45,7 +53,7 @@ class Veebump extends Command {
 
     flags.type.forEach((t, i) => {
       const path = flags.file ? flags.file[i] : undefined
-      processMap[t](flags.bump, path)
+      processMap[t](args.type, path)
     })
   }
 
@@ -66,7 +74,7 @@ class Veebump extends Command {
 
     await replaceInFile(
       filepath,
-      /versionName "([\d.]+)"/,
+      /versionName "([\da-z.-]+)"/,
       ({token, captures}) => {
         const nextVer = incSemver(captures[0], bump)
         return token.replace(captures[0], `${nextVer}`)
