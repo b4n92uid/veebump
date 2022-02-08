@@ -28,5 +28,5 @@ USAGE
 OPTIONS
   -f, --file=file
   -h, --help                 show CLI help
-  -t, --type=package|gradle  [default: package,gradle]
+  -t, --type=package|gradle|plist  [default: package,gradle,plist]
 ```

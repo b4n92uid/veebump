@@ -17,8 +17,8 @@ class Veebump extends Command {
     type: flags.string({
       char: 't',
       multiple: true,
-      options: ['package', 'gradle'],
-      default: ['package', 'gradle'],
+      options: ['package', 'gradle', 'plist'],
+      default: ['package', 'gradle', 'plist'],
     }),
 
     file: flags.string({
@@ -49,6 +49,7 @@ class Veebump extends Command {
     const processMap: ProcessBind = {
       package: this.replacePackage,
       gradle: this.replaceGradle,
+      plist: this.replacePlist,
     }
 
     flags.type.forEach((t, i) => {
@@ -77,6 +78,26 @@ class Veebump extends Command {
       /versionName "([\da-z.-]+)"/,
       ({token, captures}) => {
         const nextVer = incSemver(captures[0], bump)
+        return token.replace(captures[0], `${nextVer}`)
+      }
+    )
+  }
+
+  async replacePlist(bump: ReleaseType, filepath = './ios/App/App/Info.plist') {
+    await replaceInFile(
+      filepath,
+      /<key>CFBundleShortVersionString<\/key>\s+<string>([\da-z.-]+)<\/string>/,
+      ({token, captures}) => {
+        const nextVer = incSemver(captures[0], bump)
+        return token.replace(captures[0], `${nextVer}`)
+      }
+    )
+
+    await replaceInFile(
+      filepath,
+      /<key>CFBundleVersion<\/key>\s+<string>(\d+)<\/string>/,
+      ({token, captures}) => {
+        const nextVer = parseInt(captures[0], 10) + 1
         return token.replace(captures[0], `${nextVer}`)
       }
     )
