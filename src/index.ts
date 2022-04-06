@@ -4,8 +4,16 @@ import {inc as incSemver, ReleaseType} from 'semver'
 import {replaceInJson} from './replacer/json'
 import {replaceInFile} from './replacer/text'
 
+interface ProcessOptions {
+  incStep: number;
+}
+
 interface ProcessBind {
-  [index: string]: (bump: ReleaseType, filepath?: string) => Promise<void>;
+  [index: string]: (
+    bump: ReleaseType,
+    filepath?: string,
+    options?: ProcessOptions
+  ) => Promise<void>;
 }
 
 class Veebump extends Command {
@@ -24,6 +32,11 @@ class Veebump extends Command {
     file: flags.string({
       char: 'f',
       multiple: true,
+    }),
+
+    incStep: flags.integer({
+      char: 'i',
+      default: 1,
     }),
   }
 
@@ -52,13 +65,21 @@ class Veebump extends Command {
       plist: this.replacePlist,
     }
 
+    const options: ProcessOptions = {
+      incStep: flags.incStep,
+    }
+
     flags.type.forEach((t, i) => {
       const path = flags.file ? flags.file[i] : undefined
-      processMap[t](args.type, path)
+      processMap[t](args.type, path, options)
     })
   }
 
-  async replacePackage(bump: ReleaseType, filepath = './package.json') {
+  async replacePackage(
+    bump: ReleaseType,
+    filepath = './package.json',
+    _options: ProcessOptions = {incStep: 1}
+  ) {
     await replaceInJson(filepath, 'version', version => {
       return incSemver(version, bump)
     })
@@ -66,10 +87,11 @@ class Veebump extends Command {
 
   async replaceGradle(
     bump: ReleaseType,
-    filepath = './android/app/build.gradle'
+    filepath = './android/app/build.gradle',
+    options: ProcessOptions = {incStep: 1}
   ) {
     await replaceInFile(filepath, /versionCode (\d+)/, ({token, captures}) => {
-      const nextVer = parseInt(captures[0], 10) + 1
+      const nextVer = parseInt(captures[0], 10) + options.incStep
       return token.replace(captures[0], `${nextVer}`)
     })
 
@@ -83,7 +105,11 @@ class Veebump extends Command {
     )
   }
 
-  async replacePlist(bump: ReleaseType, filepath = './ios/App/App/Info.plist') {
+  async replacePlist(
+    bump: ReleaseType,
+    filepath = './ios/App/App/Info.plist',
+    options: ProcessOptions = {incStep: 1}
+  ) {
     await replaceInFile(
       filepath,
       /<key>CFBundleShortVersionString<\/key>\s+<string>([\da-z.-]+)<\/string>/,
@@ -97,7 +123,7 @@ class Veebump extends Command {
       filepath,
       /<key>CFBundleVersion<\/key>\s+<string>(\d+)<\/string>/,
       ({token, captures}) => {
-        const nextVer = parseInt(captures[0], 10) + 1
+        const nextVer = parseInt(captures[0], 10) + options.incStep
         return token.replace(captures[0], `${nextVer}`)
       }
     )
