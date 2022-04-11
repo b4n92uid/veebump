@@ -1,4 +1,5 @@
 import {Command, flags} from '@oclif/command'
+import {existsSync} from 'fs'
 import {inc as incSemver, ReleaseType} from 'semver'
 
 import {replaceInJson} from './replacer/json'
@@ -69,10 +70,14 @@ class Veebump extends Command {
       incStep: flags.incStep,
     }
 
-    flags.type.forEach((t, i) => {
+    const process = flags.type.map(async (t, i) => {
       const path = flags.file ? flags.file[i] : undefined
-      processMap[t](args.type, path, options)
+      await processMap[t](args.type, path, options)
     })
+
+    await Promise.all(process)
+
+    this.log('✅ Versions update successfully')
   }
 
   async replacePackage(
@@ -80,6 +85,8 @@ class Veebump extends Command {
     filepath = './package.json',
     _options: ProcessOptions = {incStep: 1}
   ) {
+    if (!existsSync(filepath)) return
+
     await replaceInJson(filepath, 'version', version => {
       return incSemver(version, bump)
     })
@@ -90,6 +97,8 @@ class Veebump extends Command {
     filepath = './android/app/build.gradle',
     options: ProcessOptions = {incStep: 1}
   ) {
+    if (!existsSync(filepath)) return
+
     await replaceInFile(filepath, /versionCode (\d+)/, ({token, captures}) => {
       const nextVer = parseInt(captures[0], 10) + options.incStep
       return token.replace(captures[0], `${nextVer}`)
@@ -110,6 +119,8 @@ class Veebump extends Command {
     filepath = './ios/App/App/Info.plist',
     options: ProcessOptions = {incStep: 1}
   ) {
+    if (!existsSync(filepath)) return
+
     await replaceInFile(
       filepath,
       /<key>CFBundleShortVersionString<\/key>\s+<string>([\da-z.-]+)<\/string>/,
